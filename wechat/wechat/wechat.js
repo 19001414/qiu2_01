@@ -1140,8 +1140,8 @@ Wechat.prototype.semantic = function(semanticData){
 Wechat.prototype.reply = function(){
   var content = this.body
   var message = this.weixin
-  console.log(content +'wechat.js')
-  console.log(message +'wechat.js')
+  //console.log(content +'wechat.js')
+  //console.log(message +'wechat.js')
   var xml = util.tpl(content,message)
 
   this.status = 200
