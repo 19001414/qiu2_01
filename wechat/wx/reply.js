@@ -1,17 +1,8 @@
 'use strict'
 var path = require('path')
-var config = require('../config')
-var Wechat = require('../wechat/wechat')
-var menu =require('./menu')
-var wechatApi = new Wechat(config.wechat)
-
-wechatApi.deteleMenu()
-	.then(function(){
-		return wechatApi.createMenu(menu)
-	})
-	.then(function(msg){
-	console.log(msg)
-	})
+var wx = require('../wx/index')
+var Movie = require('../app/api/movie')
+var wechatApi = wx.getWechat()
 
 exports.reply = function* (next){
 	var message = this.weixin
@@ -22,10 +13,15 @@ exports.reply = function* (next){
 	}
 	else if(message.MsgType === 'event'){
 		if(message.Event === 'subscribe'){
-			if(message.EventKey){
-				console.log('扫二维码进来'+message.EventKey + '  '+ message)
-			}
-			this.body = '哈哈，你找到我了'+'消息ID：'+message.MsgId
+			
+			this.body = '哈哈，你找到我了\n'+
+			'回复1-3测试文字回复\n'+
+			'回复4，测试图文回复\n'+
+			'回复首页，进入电影首页\n'+
+			'回复游戏，进入游戏页面\n' +
+			'回复电影名字，查询电影信息\n'+
+			'回复语音，查询电影信息\n'+
+			'也可以点击<a href="http://js7f65gnts.proxy.qqbrowser.cc/movie">语音查电影</a>'
 		}
 		else if(message.Event === 'unsubscribe'){
 			console.log('你敢抛弃本宝宝？')
@@ -77,6 +73,31 @@ exports.reply = function* (next){
 			this.body = '您点击了菜单中'+message.EventKey
 		}
 	}
+	else if(message.MsgType === 'voice'){
+		var voiceText = message.Recognition
+		var movies = yield Movie.searchByName(voiceText)
+
+			if(!movies || movies.length === 0 ){
+				movies = yield Movie.searchByDouBan(voiceText)
+			}
+			if(movies && movies.length>0){
+				reply = []
+
+				movies = movies.slice(0,10)
+				movies.forEach(function(movie){
+					reply.push({
+						title:movie.title,
+						description:movie.title,
+						picUrl:movie.images.large,
+						url:movie.alt
+					})
+				})
+			}
+			else {
+				reply = "没有查询到与"+ content +'匹配的电影'
+			}
+			this.body = reply
+	}
 	else if(message.MsgType === 'text'){
 		this.body = '这是一个文本类型'
 		var content = message.Content
@@ -92,255 +113,40 @@ exports.reply = function* (next){
 			reply = '天下第三老大蠢了'
 		}
 		else if(content === '4'){
-			reply = [
-				{
+			reply = [{
 					title:'技术改变世界',
 					description:'只是一个描述而已',
 					picUrl:'http://img1.imgtn.bdimg.com/it/u=2016049997,229290512&fm=21&gp=0.jpg'
-				},
-				{
+				},{
 					title:'nodejs开发微信',
 					description:'好难学',
 					picUrl:'http://img0.imgtn.bdimg.com/it/u=3125712074,4190615654&fm=21&gp=0.jpg',
 					url:'https://nodejs.org/'
-				}
-			]
+				}]
 		}
-		else if(content === '5'){
-			var data = yield wechatApi.uploadMaterial('image',path.join(__dirname,'../2.jpg'))
-			reply = {
-				type:'image',
-				mediaId:data.media_id
-			}
-			console.log(reply)
-		}
-		else if(content === '6'){
-			this.body = 'success'
-			var data = yield wechatApi.uploadMaterial('video',path.join(__dirname,'../6.mp4'))
-			reply = {
-				type:'video',
-				title:'回复视频',
-				description:'看个奶子',
-				mediaId:data.media_id
-			}
-			console.log(reply)
-		}
-		else if(content === '7'){
-			var data = yield wechatApi.uploadMaterial('image',path.join(__dirname,'../2.jpg'))
-			reply = {
-				type:'music',
-				title:'回复音乐',
-				description:'看海哭的声音',
-				musicUrl:'http://bd.kuwo.cn/yinyue/512846?from=baidu',
-				thumbMediaId:data.media_id
-			}
-			console.log(reply)
-		}
-		else if(content === '8'){
-			var data = yield wechatApi.uploadMaterial('image',path.join(__dirname,'../2.jpg'),{type:'image'})
-			reply = {
-				type:'image',
-				mediaId:data.media_id
-			}
-			console.log(reply)
-		}
-		else if(content === '9'){
-			var data = yield wechatApi.uploadMaterial('video',path.join(__dirname,'../6.mp4'),{type:'video',description:'{"title:"nimahai","introduction":"Never give up"}'})
-			console.log(data)
-			reply = {
-				type:'video',
-				title:'回复内容吓死你',
-				description:'并不好看',
-				mediaId:data.media_id
-			}
-			console.log(reply)
-		}
-		else if(content === '10'){
-			var picData = yield wechatApi.uploadMaterial('image',path.join(__dirname,'../2.jpg'),{})
-			//console.log(picData)
-			var media = {
-				articles: [{
-					title:'tututu1',
-					thumb_media_id:picData.media_id,
-					author:'qiuer',
-					digest:"meiyou",
-					show_cover_pic:1,
-					content:'nocontent',
-					content_source_url:'https://github.com'
-				},{
-					title:'tututu2',
-					thumb_media_id:picData.media_id,
-					author:'qiuer',
-					digest:"meiyou",
-					show_cover_pic:1,
-					content:'nocontent',
-					content_source_url:'https://github.com'
-				}
-				]
-			}
-			data = yield wechatApi.uploadMaterial('news',media,{})
-			data = yield wechatApi.fetchMaterial(data.media_id,'news',{})
+		else{
+			var movies = yield Movie.searchByName(content)
 
-			console.log(data)
+			if(!movies || movies.length === 0 ){
+				movies = yield Movie.searchByDouBan(content)
+			}
+			if(movies && movies.length>0){
+				reply = []
 
-			var items = data.news_item
-			var news = []
-
-			items.forEach(function(item){
-				news.push({
-					title:item.title,
-					description:item.digest,
-					picUrl:picData.url,
-					url:item.url
+				movies = movies.slice(0,10)
+				movies.forEach(function(movie){
+					reply.push({
+						title:movie.title,
+						description:movie.title,
+						picUrl:movie.images.large,
+						url:movie.alt
+					})
 				})
-			})
-			reply = news
-		}
-		else if(content === '11'){
-			var counts = yield wechatApi.countMaterial()
-			var results = yield [
-				wechatApi.batchMaterial({
-				type:'image',
-				offset:0,
-				count:10
-			}),wechatApi.batchMaterial({
-				type:'video',
-				offset:0,
-				count:10
-			}),wechatApi.batchMaterial({
-				type:'voice',
-				offset:0,
-				count:10
-			}),wechatApi.batchMaterial({
-				type:'news',
-				offset:0,
-				count:10
-			})
-			]
-			console.log(JSON.stringify(results))
-			reply = '1'
-		}
-		else if(content === '12'){
-			var group = yield wechatApi.createGroup('wechat')
-			console.log('新分组 wechat')
-			console.log(group)
-			var group1 = yield wechatApi.fetchGroup()
-			console.log('查询分组')
-			console.log(group1)
-			var group3 = yield wechatApi.checkGroup(message.FromUserName)
-			console.log('查看自己的分组')
-			console.log(group3)
-			var group4 = yield wechatApi.moveGroup(message.FromUserName,106)
-			console.log('移动到106')
-			console.log(group4)
-			var group5 = yield wechatApi.fetchGroup()
-			console.log('移动后的列表')
-			console.log(group5)
-			//var group5 = yield wechatApi.delGroup(104)
-			//console.log('删除了104分组。。')
-			//console.log(group5)
-			reply = 'group done'
-		}
-		else if(content === '13'){
-			var user = yield wechatApi.fetchUser(message.FromUserName)
-			console.log('user')
-			var openIds = [
-				{
-					openid:message.FromUserName,
-					lang:'en'
-				}
-			]
-			var users = yield wechatApi.fetchUser(openIds)
-			console.log(users)
-			reply = JSON.stringify(user)
-
-		}
-		else if(content === '14'){
-			var listUser = yield wechatApi.listUser()
-			console.log(listUser)
-			reply = listUser.total
-		}
-		else if(content === '15'){
-			if(message.MsgType ==='event'){
-				this.body ="success"
 			}
-			//console.log(content + 'reply.js')
-			// var text = {
-			// 	'content':'hello world'
-			// }
-			// var msgData = yield wechatApi.PreviewMass('text',text, 'oOKrustmAzH62exmP42Obr1bjGJk')
-			var mpnews = {
-				media_id : '2OxC-sZF2A7YjwMZ0OTrWXjfTE9ZUt_aTIyUqP9T-uI'//这个要依靠上面的回复内容获得ID值
+			else {
+				reply = "没有查询到与"+ content +'匹配的电影'
 			}
-			var msgData = yield wechatApi.sendByMass('mpnews',mpnews,'2OxC-sZF2A7YjwMZ0OTrWXjfTE9ZUt_aTIyUqP9T-uI')//这里的105是分组ID，也需要上面查询到
-			console.log(msgData)
-			reply = 'Yeah~!'
 		}
-		else if(content === '16'){
-			// var text = {
-			// 	'content':'hello world'
-			// }
-			// var msgData = yield wechatApi.PreviewMass('text',text, 'oOKrustmAzH62exmP42Obr1bjGJk')
-			var mpnews = {
-				media_id : '2OxC-sZF2A7YjwMZ0OTrWXjfTE9ZUt_aTIyUqP9T-uI'//这个要依靠上面的回复内容获得ID值
-			}
-			var msgData = yield wechatApi.sendByMass('mpnews',mpnews,'2OxC-sZF2A7YjwMZ0OTrWXjfTE9ZUt_aTIyUqP9T-uI')//这里的105是分组ID，也需要上面查询到
-			console.log(msgData)
-			reply = '这是回复16'
-		}
-		else if(content === '17'){
-			var msgData = yield wechatApi.checkByMass('')//里面传ID
-			console.log(msgData)
-			reply = '这是回复17'
-		}
-		// else if(content === '18'){
-		// 	var tempQr = {
-		// 		expire_seconds:604800,
-		// 		action_name:'QR_SCENE',
-		// 		action_info:{
-		// 			scene:{
-		// 				scene_id:123
-		// 			}
-		// 		}
-		// 	}
-		// 	var permQr = {
-		// 		action_name:'QR_LIMIT_SCENE',
-		// 		action_info:{
-		// 			scene:{
-		// 				scene_str:123
-		// 			}
-		// 		}
-		// 	}
-		// 	var permStrQr = {
-		// 		action_name:'QR_LIMIT_STR_SCENE',
-		// 		action_info:{
-		// 			scene:{
-		// 				scene_str:'abc'
-		// 			}
-		// 		}
-		// 	}
-
-		// 	var qr1 = yield wechatApi.createQrcode(tempQr)
-		// 	var qr2 = yield wechatApi.createQrcode(permQr)
-		// 	var qr3 = yield wechatApi.createQrcode(permStrQr)
-
-		// 	reply = '创建二维码成功'
-		// }
-		// else if(content === '19'){
-		// 	var longUrl = 'http://imooc.com/'
-		// 	var shortData = yield wechatApi.createShortUrl(null,longUrl)
-		// 	reply = shortData.short_url
-		// }
-		// else if(content === '20'){
-		// 	var semanticData = {
-		// 		query:'查一下明天从北京到上海的南航机票',
-		// 		city:'北京',
-		// 		category: 'flight,hotel',
-		// 		uid:message.FromUserName
-		// 	}
-		// 	var _semanticData = yield wechatApi.semantic(semanticData)
-		// 	reply = JSON.stringify(_semanticData)
-		// }
 
 
 		this.body = reply
