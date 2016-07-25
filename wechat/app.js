@@ -58,7 +58,8 @@ app.use(views(__dirname + '/app/views',{
   extension:'jade'
 }))
 
-router.get('/movie',game.movie)
+router.get('/movie',game.guess)
+router.get('/movie/:id',game.find)
 router.get('/wx',wechat.hear)
 router.post('/wx',wechat.hear)
 

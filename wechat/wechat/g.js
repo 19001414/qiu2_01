@@ -36,9 +36,9 @@
       })
       //console.log(data.toString())
       var content = yield util.parseXMLAsync(data)
-      console.log(content)
+      //console.log(content)
       var message = util.formatMessage(content.xml)
-      console.log(message)
+      //console.log(message)
       
       this.weixin = message
 

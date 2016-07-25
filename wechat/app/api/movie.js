@@ -1,8 +1,11 @@
 var mongoose = require('mongoose')
 var Movie = mongoose.model('Movie')
+var co =require('co')
 var Category = mongoose.model('Category')
+var Promise = require('bluebird')
 var koa_request = require('koa-request')
-
+var request = Promise.promisify(require('request'))
+var _ = require('lodash')
 // index page
 exports.findAll = function *() {
   var Category = yield Category
@@ -35,71 +38,118 @@ exports.searchByName = function *(q) {
       return movies
 }
 
+exports.searchById = function *(id) {
+  var movie = yield Movie
+      .findOne({_id: id})
+      .exec()
+      return movie
+}
+
+
+function updateMovies(movie){
+  var options = {
+      url :'https://api.douban.com/v2/movie/subject/'+ movie.doubanId,
+      json:true
+    }
+
+    request(options).then(function(response){
+      var data = response.body
+      console.log(data)
+      _.extend(movie,{
+        country:data.countries[0],
+        language:data.language,
+        summary:data.summary
+      })
+
+      
+
+      var genres = movie.genres
+
+      if(genres && genres.length > 0){
+        var cateArray = []
+
+        genres.forEach(function(genre) {
+          cateArray.push(function *(){
+            var cat = yield Category.findOne({name:genre}).exec()
+
+            if(cat){
+              cat.movies.push(movie._id)
+              yield cat.save()
+            }
+            else{
+              cat = new Category({
+                name:genre,
+                movies:[movie._id]
+              })
+              
+              cat = yield cat.save()
+              movie.category = cat._id
+              yield movie.save()
+            }
+          })
+        })
+        co(function *(){
+          yield cateArray
+        })
+      }
+      else{
+        movie.save()
+      }
+    })
+}
+
 
 exports.searchByDouBan = function *(q) {
     var options = {
       url :'https://api.douban.com/v2/movie/search?q='
     }
     options.url += encodeURIComponent(q)
+
     var response = yield koa_request(options)
     var data = JSON.parse(response.body)
     var subjects = []
-    if(data && data,subjects){
+    var movies = []
+
+    if(data && data.subjects){
       subjects = data.subjects
     }
-    return subjects
+
+    if(subjects.length > 0){
+      var queryArray = []
+
+      subjects.forEach(function(item){
+        queryArray.push(function *(){
+          var movie = yield Movie.findOne({doubanId:item.id})
+
+          if(movie){
+            movies.push(movie)
+          }
+          else{
+            var directors = item.directors || []
+            var director = directors[0]  || {}
+            movie = new Movie({
+              director: director.name || '',
+              title: item.title,
+              doubanId:item.id,
+              poster: item.images.large,
+              year: item.year,
+              genres:item.genres || []
+            })
+
+            movie = yield movie.save()
+            movies.push(movie)
+          }
+        })
+      })
+      yield queryArray
+
+      movies.forEach(function(movie){
+        updateMovies(movie)
+      })
+
+      
+    }
+    
+    return movies
 }
 
-
-// exports.searchByName = function(req, res) {
-//   var catId = req.query.cat
-//   var q = req.query.q
-//   var page = parseInt(req.query.p, 10) || 0
-//   var count = 2
-//   var index = page * count
-
-//   if (catId) {
-//     Category
-//       .find({_id: catId})
-//       .populate({
-//         path: 'movies',
-//         select: 'title poster'
-//       })
-//       .exec(function(err, categories) {
-//         if (err) {
-//           console.log(err)
-//         }
-//         var category = categories[0] || {}
-//         var movies = category.movies || []
-//         var results = movies.slice(index, index + count)
-
-//         res.render('results', {
-//           title: 'imooc 结果列表页面',
-//           keyword: category.name,
-//           currentPage: (page + 1),
-//           query: 'cat=' + catId,
-//           totalPage: Math.ceil(movies.length / count),
-//           movies: results
-//         })
-//       })
-//   }
-//   else {
-//     Movie
-//       .find({title: new RegExp(q + '.*', 'i')})
-//       .exec(function(err, movies) {
-//         if (err) {
-//           console.log(err)
-//         }
-//         var results = movies.slice(index, index + count)
-
-//         res.render('results', {
-//           title: 'imooc 结果列表页面',
-//           keyword: q,
-//           currentPage: (page + 1),
-//           query: 'q=' + q,
-//           totalPage: Math.ceil(movies.length / count),
-//           movies: results
-//         })
-//       })
-//   }
-// }

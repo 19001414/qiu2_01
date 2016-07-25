@@ -1,0 +1,93 @@
+extends ../wechat
+
+block content
+  style.
+    .hd {
+      padding: 2em 0;
+    }
+    .page_title {
+      text-align: center;
+      font-size: 30px;
+      color: #3cc51f;
+      font-weight: 400;
+      margin: 0 15%;
+    }
+    img {
+      vertical-align: middle;
+    }
+    p {
+      margin: 0 0 10px;
+    }
+    .media-list {
+      padding-left: 0;
+      list-style: none;
+    }
+    .media-object {
+      display: block;
+    }
+    .pull-left {
+      float: left!important;
+    }
+    .media {
+      margin-top: 15px;
+    }
+    .media, .media-body {
+      overflow: hidden;
+      zoom: 1;
+    }
+    .media:first-child {
+      margin-top: 0;
+    }
+    .media-left, .media>.pull-left {
+      padding-right: 10px;
+    }
+    .media-body {
+      width: 10000px;
+    }
+    .media-body, .media-left, .media-right {
+      display: table-cell;
+      vertical-align: top;
+    }
+    .h4, h4 {
+      font-size: 18px;
+    }
+    .media-heading {
+      margin-top: 0;
+      margin-bottom: 5px;
+    }
+
+  .page
+    .hd
+      h1.page_title= movie.title
+    .bd
+      .weui_cells_title 电影介绍
+      .weui_cells
+        .weui_cell
+          .weui_cell_bd.weui_cell_primary
+            p 电影名字
+          .weui_cell_ft= movie.title
+        .weui_cell
+          .weui_cell_bd.weui_cell_primary
+            p 导演
+          .weui_cell_ft= movie.director
+        .weui_cell
+          .weui_cell_bd.weui_cell_primary
+            p 国家
+          .weui_cell_ft= movie.country
+        .weui_cell
+          .weui_cell_bd.weui_cell_primary
+            p 语言
+          .weui_cell_ft= movie.language
+        .weui_cell
+          .weui_cell_bd.weui_cell_primary
+            p 上映年份
+          .weui_cell_ft= movie.year
+      .weui_cells
+        section
+          img(src="#{movie.poster}", style="width: 100%;")
+      .weui_article
+        section
+          p= movie.summary
+     
+
+

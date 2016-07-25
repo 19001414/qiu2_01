@@ -88,8 +88,8 @@ exports.reply = function* (next){
 					reply.push({
 						title:movie.title,
 						description:movie.title,
-						picUrl:movie.images.large,
-						url:movie.alt
+						picUrl:movie.poster,
+						url:'http://js7f65gnts.proxy.qqbrowser.cc/movie/'+ movie._id
 					})
 				})
 			}
@@ -138,8 +138,8 @@ exports.reply = function* (next){
 					reply.push({
 						title:movie.title,
 						description:movie.title,
-						picUrl:movie.images.large,
-						url:movie.alt
+						picUrl:movie.poster,
+						url:'http://js7f65gnts.proxy.qqbrowser.cc/movie/'+ movie._id
 					})
 				})
 			}
